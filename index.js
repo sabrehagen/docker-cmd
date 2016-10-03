@@ -8,7 +8,7 @@ return inquirer.prompt([{
     type : 'list',
     name : 'action',
     message : 'Which action would you like?',
-    choices : ['shell', 'logs']
+    choices : ['shell', 'specs', 'logs']
 }]).then((result) => {
 
     return docker.listContainers().then((containers) => {
@@ -28,6 +28,21 @@ return inquirer.prompt([{
 
             const spawnArgs = {
                 shell : (container) => ['docker', ['exec', '-it', container, '/bin/ash']],
+                specs : (container) => {
+
+                    const specPaths = {
+                        api : '/app/spec/api/*.js',
+                        websocket : '/app/spec/websocket/websocket_spec.js'
+                    }
+
+                    const specTypes = Object.keys(specPaths);
+
+                    const containerType = specTypes.reduce((result, specType) => container.includes(specType) ? specType : result, undefined);
+
+                    const specPath = specPaths[containerType];
+
+                    return ['docker', ['exec', '-it', container, 'jasmine-node', '--forceexit', specPath]];
+                },
                 logs : (container) => {
 
                     const logPaths = {
@@ -44,7 +59,7 @@ return inquirer.prompt([{
 
                     const logPath = logPaths[containerType];
 
-                    return ['docker', ['exec', '-it', container, 'less', logPath]];
+                    return ['docker', ['exec', '-it', container, 'tail', '-n', '120', '-f', logPath]];
                 }
             }
 
